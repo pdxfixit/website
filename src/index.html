@@ -17,7 +17,11 @@
   --muted:#6B4C37;
   --orange:#F6921D;
   --wordmark-filter:none;    /* the logo's black wordmark, as drawn */
+  /* the phrase shades: rust to burnt amber, all at least 3:1 on the light ground */
+  --shade-l0:.44;--shade-l1:.57;--shade-c0:.14;--shade-c1:.15;--shade-h0:44;--shade-h1:64;
   --glow-a:.55;
+  --fx-flash:#FFFCF5;        /* a photographer's flash, brighter than the ground */
+  --fx-foam:#FFF8EC;         /* the head on a poured beer */
 
   --serif:"Newsreader",Georgia,serif;
   --gutter:clamp(16px,5.5vw,84px);
@@ -30,7 +34,10 @@
     --ink:#F2E7DB;
     --muted:#BBA08A;
     --wordmark-filter:url(#to-white);   /* black lettering would vanish on espresso */
+    --shade-l0:.66;--shade-l1:.86;--shade-c0:.17;--shade-c1:.10;--shade-h0:46;--shade-h1:72;   /* deep orange to peach */
     --glow-a:.75;
+    --fx-flash:#FFF3E1;
+    --fx-foam:#F2E7DB;
     color-scheme:dark;
   }
 }
@@ -86,16 +93,17 @@ a{color:inherit}
 .hy{display:none}           /* a hyphen that only appears where a word is broken, on phones */
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
-/* the slot is a drum turning on a horizontal axis, and each phrase is one face of it.
-   Every phrase sits in the slot's one grid cell, so the line keeps the widest one's room.
-   A face is one line box tall (two on phones); neighbouring faces meet at --step, which puts
-   the axis --r behind the face. The window is the line's band, from the ascenders' tops to just
-   under the descenders (measured: ascender .74em, descender .22em), so a turning face never
-   paints over the lines above or below. */
+/* the slot holds every phrase as a face, stacked in its one grid cell, so the line keeps the
+   widest one's room. A face is one line box tall (two on phones). One swap effect, the wheel,
+   turns the slot as a drum: neighbouring faces meet at --step, which puts the axis --r behind
+   the face. The window is the line's band, from the ascenders' tops to just under the
+   descenders (measured: ascender .74em, descender .22em), so no effect ever paints over the
+   lines above or below. */
 .slot{
   --face:1.02em;
   --step:60deg;
   --r:calc(var(--face) / 2 / tan(var(--step) / 2));
+  position:relative;
   display:grid;justify-items:start;align-items:last baseline;
   width:max-content;
   clip-path:inset(-.03em -.4em .04em -.12em);
@@ -104,9 +112,69 @@ a{color:inherit}
   grid-area:1/1;white-space:nowrap;
   transform-origin:50% 50% calc(-1 * var(--r));
   backface-visibility:hidden;
+  /* each phrase wears its own shade of the brand orange: --i (0 to 1, set per phrase in the
+     script) slides it along the theme's range, darker or brighter, never too faint to read */
+  color:oklch(
+    calc(var(--shade-l0) + (var(--shade-l1) - var(--shade-l0)) * var(--i, .5))
+    calc(var(--shade-c0) + (var(--shade-c1) - var(--shade-c0)) * var(--i, .5))
+    calc(var(--shade-h0) + (var(--shade-h1) - var(--shade-h0)) * var(--i, .5)));
 }
 .ph.off,.slot .rm{visibility:hidden}
 .slot .rm{display:none}
+
+/* --- swap effects. A face is only ever clipped, faded or recoloured in place; anything an effect
+   draws (a rule, an eraser, a flash) goes on .fx, a layer laid over the slot and out of the flow,
+   positioned by the script in px from the slot's corner. The slot's clip keeps all of it in the band. */
+.fx{position:absolute;inset:0;pointer-events:none}
+.fx>*{position:absolute;left:0;top:0}
+.fx-probe{display:inline-block;width:0;height:0}    /* sits on the baseline, so the script can find it */
+.fx-defs{position:absolute;width:0;height:0}
+/* registered, so they animate smoothly: browsers will not animate -webkit-text-fill-color or
+   -webkit-text-stroke directly, but they will animate a colour mixed from one of these */
+@property --fx-fill{syntax:"<percentage>";inherits:true;initial-value:100%}
+@property --fx-glass{syntax:"<percentage>";inherits:true;initial-value:40%}
+/* terminal: a solid block a monospace cell wide, in the phrase's own shade */
+.fx-caret{background:currentColor}
+/* chalkboard: a felt eraser on a wooden back, and the dust it leaves */
+.fx-eraser{
+  border-radius:.06em;
+  background:linear-gradient(var(--ink) 0 46%,var(--muted) 46%);
+  box-shadow:0 .03em .08em color-mix(in oklab,var(--ink) 35%,transparent);
+}
+.fx-dust{background:currentColor;opacity:.16;filter:blur(.07em);border-radius:.25em}
+/* blueprint: construction lines, a drafting square, and type drawn in outline before it is inked */
+.fx-guide,.fx-square{background:var(--muted);opacity:.6;transform-origin:0 50%}
+.fx-square{opacity:.9}
+.ph.fx-outline{
+  --fx-fill:0%;   /* the ink goes in as this rises, and the outline goes out */
+  -webkit-text-fill-color:color-mix(in oklab,currentColor var(--fx-fill),transparent);
+  -webkit-text-stroke:max(1px,.011em) color-mix(in oklab,currentColor calc(100% - var(--fx-fill)),transparent);
+}
+/* camera: a bloom of light and a two-blade shutter */
+.fx-flash{background:radial-gradient(closest-side,var(--fx-flash),transparent);opacity:0}
+.fx-blade{background:var(--ink)}
+/* redaction */
+.fx-bar{background:var(--ink);transform-origin:0 0}
+/* heart monitor: the trace and the bright dot writing it */
+.fx-trace{overflow:visible;fill:none;stroke:currentColor;stroke-width:.026em;stroke-linejoin:round;stroke-linecap:round}
+.fx-blip{border-radius:50%;background:currentColor;box-shadow:0 0 .07em .02em currentColor}
+/* brewery: the letters are glasses, filled from the bottom with the phrase's shade under a head of foam */
+.ph.fx-pour .seg{
+  -webkit-text-fill-color:transparent;
+  -webkit-text-stroke:max(1px,.009em) color-mix(in oklab,currentColor var(--fx-glass),transparent);
+  background:linear-gradient(to top,currentColor 0 50%,var(--fx-foam) 50% 56%,transparent 56%) 0 0/100% 200% no-repeat;
+  -webkit-background-clip:text;background-clip:text;
+}
+/* music: each letter set as its own piece of type, so it can land on its beat */
+.fx-letter{position:absolute;white-space:pre}
+/* design tool: a dashed selection box with grips */
+.fx-marquee{overflow:visible;fill:none;stroke:var(--ink);stroke-width:1.25px;stroke-dasharray:5 4}
+.fx-marquee .grip{display:none;fill:var(--ground);stroke-dasharray:none}
+.fx-marquee.held .grip{display:inline}
+/* ledger: a sum line, then the double rule under a total */
+.fx-ledger{background:var(--ink);transform-origin:0 50%}
+/* Portland: a light drizzle */
+.fx-drop{background:linear-gradient(transparent,var(--muted));opacity:.75;transform-origin:50% 0}
 
 /* "Say hello" sits in the rag of the last line, on its baseline, flush with the hem's right end */
 .say .cta{grid-area:1/1;justify-self:end;align-self:last baseline}
@@ -236,12 +304,26 @@ a{color:inherit}
 </footer>
 
 <script>
-/* The phrases that take the place of "businesses". Add, remove or reorder freely. */
-const KINDS = ["small businesses", "mid-size businesses", "home businesses", "entrepreneurs", "consulting firms", "freelancers", "non-profits"];
+/* true adds "fellow Portlanders" to the phrases, arriving in its own light drizzle */
+const PORTLAND = true;
 
-/* On phones every phrase takes two short lines. Phrases break at their first space, or failing that their hyphen;
-   a single word needs its break point written here, with "|" where the hyphen goes. */
-const BREAKS = { entrepreneurs: "entre|preneurs", freelancers: "free|lancers" };
+/* The phrases that take the place of "businesses". Add, remove or reorder freely. */
+const KINDS = [
+  "small businesses", "mid-size businesses", "home businesses", "entrepreneurs", "consulting firms", "freelancers", "non-profits",
+  "medical practices", "law offices", "family businesses", "community groups", "design studios",
+  "accounting firms", "real estate offices", "architects", "photographers", "creative studios", "musicians",
+  "local shops", "restaurants", "contractors", "retailers", "congregations", "co-ops", "private schools", "breweries",
+  ...(PORTLAND ? ["fellow Portlanders"] : []),
+];
+
+/* On phones every phrase takes two short lines. Phrases break at their most balanced space, or failing that their
+   hyphen; a single word needs its break point written here, with "|" where the hyphen goes. A word too short to
+   break (say "clubs") would leave a blank line on phones, so give it a second word instead. */
+const BREAKS = {
+  entrepreneurs: "entre|preneurs", freelancers: "free|lancers", architects: "archi|tects",
+  photographers: "photo|graphers", musicians: "musi|cians", restaurants: "restau|rants",
+  contractors: "con|tractors", retailers: "re|tailers", congregations: "congre|gations", breweries: "brew|eries",
+};
 
 {
   "use strict";
@@ -269,7 +351,11 @@ const BREAKS = { entrepreneurs: "entre|preneurs", freelancers: "free|lancers" };
   const split = (text) => {
     const hand = BREAKS[text];
     if (hand) { const [a, b] = hand.split("|"); return [a, b, true]; }
-    const sp = text.indexOf(" "), hy = text.indexOf("-");
+    /* break at whichever space keeps the longer line shortest ("real estate / offices") */
+    let sp = -1;
+    for (let i = text.indexOf(" "); i > 0; i = text.indexOf(" ", i + 1))
+      if (sp < 0 || Math.max(i, text.length - i - 1) < Math.max(sp, text.length - sp - 1)) sp = i;
+    const hy = text.indexOf("-");
     if (sp > 0) return [text.slice(0, sp + 1), text.slice(sp + 1), false];
     if (hy > 0) return [text.slice(0, hy + 1), text.slice(hy + 1), false];
     return [text, "", false];
@@ -299,16 +385,123 @@ const BREAKS = { entrepreneurs: "entre|preneurs", freelancers: "free|lancers" };
     face.append(first);
     if (b) face.append(segment(b));
     slot.insertBefore(face, slot.querySelector(".rm"));
+    /* golden-ratio steps spread the shades evenly, so no two phrases share one */
+    face.style.setProperty("--i", ((i * 0.6180339887) % 1).toFixed(3));
     return face;
   });
+
+  /* ---------- the swap: the old phrase leaves and the new one arrives, in about a second ----------
+     Every face is already laid out in the slot's one cell, so an effect can only clip, fade, recolour
+     or transform faces, never resize them, and whatever else it draws goes on the .fx layer over the
+     slot. The slot's clip keeps all of it inside the line's band, so no swap can move a line. */
+  const PERIOD = 2900, LONG = 1300;   /* a swap longer than LONG stretches its own period, so its phrase still gets a full read */
+  const EASE = getComputedStyle(document.documentElement).getPropertyValue("--ease").trim() || "ease-in-out";
+  const NS = "http://www.w3.org/2000/svg";
+  const layer = document.createElement("span");
+  layer.className = "fx";
+  slot.append(layer);
+
+  const show = (el) => el.classList.remove("off");
+  const hide = (el) => el.classList.add("off");
+  const play = (el, keys, ms, opts) => el.animate(keys, { duration: ms, easing: EASE, fill: "both", ...opts }).finished;
+  /* run draw(p) on every frame for ms, with p going 0 to 1. Like the animations, it waits while the tab is hidden. */
+  const frames = (ms, draw) => new Promise((done) => {
+    let t0 = -1;
+    const tick = (now) => {
+      if (t0 < 0) t0 = now;
+      const p = Math.min(1, (now - t0) / ms);
+      draw(p);
+      if (p < 1) requestAnimationFrame(tick);
+      else done();
+    };
+    requestAnimationFrame(tick);
+  });
+  const hold = (ms) => frames(ms, () => {});
+  const inOut = (p) => (p < .5 ? 4 * p ** 3 : 1 - (2 - 2 * p) ** 3 / 2);
+  const out = (p) => 1 - (1 - p) ** 3;
+  const pixels = (n) => `${n.toFixed(1)}px`;
+
+  /* a piece of overlay at x, y in px from the slot's corner, w by h if given, else sized by its content */
+  const paint = (cls, x, y, w, h, parent = layer) => {
+    const el = document.createElement("span");
+    el.className = cls;
+    Object.assign(el.style, { left: pixels(x), top: pixels(y) });
+    if (w !== undefined) Object.assign(el.style, { width: pixels(w), height: pixels(h) });
+    parent.append(el);
+    return el;
+  };
+  const vector = (name, attrs, parent) => {
+    const el = document.createElementNS(NS, name);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    parent.append(el);
+    return el;
+  };
+
+  /* where a face's type sits, measured live in px from the slot's corner. One row per line (a phone face
+     has two), each with its ink's left and right, its baseline, and its band: the slice of the slot's
+     height that belongs to it, so clipping one line never shows a neighbour's ascenders or descenders.
+     And every character in reading order, with the right edge a caret would sit at after it. */
+  const geometry = (face) => {
+    const o = slot.getBoundingClientRect(), f = face.getBoundingClientRect();
+    const em = parseFloat(getComputedStyle(slot).fontSize);
+    const range = document.createRange(), rows = [], keys = [];
+    const walk = document.createTreeWalker(face, NodeFilter.SHOW_TEXT);
+    for (let node; (node = walk.nextNode()); ) {
+      for (let i = 0; i < node.length; i++) {
+        range.setStart(node, i);
+        range.setEnd(node, i + 1);
+        const r = range.getBoundingClientRect(), ch = node.data[i];
+        if (!r.width) continue;   /* the hyphen off phones, or a space swallowed at a line's end */
+        let row = rows.find((w) => Math.abs(w.top - (r.top - o.top)) < em / 3);
+        if (!row) rows.push(row = { top: r.top - o.top, x0: Infinity, x1: -Infinity, first: keys.length, n: 0 });
+        if (ch !== " ") {
+          row.x0 = Math.min(row.x0, r.left - o.left);
+          row.x1 = Math.max(row.x1, r.right - o.left);
+        }
+        row.n++;
+        keys.push({ ch, row, left: r.left - o.left, top: r.top - o.top, x: r.right - o.left });
+      }
+    }
+    /* a zero-size inline-block sits on the baseline */
+    const probe = document.createElement("span");
+    probe.className = "fx-probe";
+    face.querySelector(".seg").append(probe);
+    const ascent = probe.getBoundingClientRect().bottom - o.top - rows[0].top;
+    probe.remove();
+    rows.forEach((row, i) => {
+      row.base = row.top + ascent;
+      row.y0 = i ? rows[i - 1].y1 : -em;
+      /* bands meet halfway between one line's descenders and the next one's ascenders */
+      row.y1 = i < rows.length - 1 ? (row.base + .22 * em + rows[i + 1].top + ascent - .74 * em) / 2 : o.height + em;
+    });
+    return { face, em, rows, keys, dx: f.left - o.left, dy: f.top - o.top, w: o.width, h: o.height, color: getComputedStyle(face).color };
+  };
+  /* the left of the leftmost ink and the right of the rightmost, over every row of the given faces */
+  const reach = (...gs) => {
+    const rows = gs.flatMap((g) => g.rows);
+    return [Math.min(...rows.map((r) => r.x0)), Math.max(...rows.map((r) => r.x1))];
+  };
+  /* clip a face to one span of each row: [left, right] in slot px, with an optional lower top as a third
+     value. true keeps the whole row; anything falsy hides it. */
+  const clip = (g, spans) => {
+    let d = "";
+    g.rows.forEach((row, i) => {
+      const s = spans[i] === true ? [-g.em, g.w + g.em] : spans[i];
+      if (!s) return;
+      const x0 = s[0] - g.dx, x1 = s[1] - g.dx, y0 = (s[2] ?? row.y0) - g.dy, y1 = row.y1 - g.dy;
+      if (x1 > x0 && y1 > y0) d += `M${x0.toFixed(1)} ${y0.toFixed(1)}H${x1.toFixed(1)}V${y1.toFixed(1)}H${x0.toFixed(1)}Z`;
+    });
+    g.face.style.clipPath = d ? `path("${d}")` : "inset(50%)";
+  };
+
+  /* --- the general effects, drawn at random for any phrase --- */
 
   /* one turn of the drum: the face on show rolls up and over the top, away from the light, as the
      next comes up from below. Both ride the same axis on the same clock, so they stay joined at
      the edge. Each face is seen square on, from DEPTH face-heights away, so the drum foreshortens
      without the type appearing to lean or swell. It runs a hair past and settles back, like a detent catching. */
-  const PERIOD = 2900, TURN = 820, CATCH = .84, PAST = 2.5, SHADE = .15, DEPTH = 16;
+  const TURN = 820, CATCH = .84, PAST = 2.5, SHADE = .15, DEPTH = 16;
   const STEP = parseFloat(getComputedStyle(slot).getPropertyValue("--step")) || 60;
-  const EASE = getComputedStyle(document.documentElement).getPropertyValue("--ease").trim() || "ease-in-out";
   const roll = (face, lens, [a, b, c]) => {
     const at = ([deg, light]) => ({ transform: `${lens} rotateX(${deg}deg)`, opacity: light });
     return face.animate([
@@ -320,13 +513,354 @@ const BREAKS = { entrepreneurs: "entre|preneurs", freelancers: "free|lancers" };
   /* perspective() looks from the transform origin, which sits on the axis; stepping out to the
      face and back puts the eye DEPTH face-heights in front of the face, so a face at rest is
      drawn exactly as the type around it is */
-  const turn = (from, to) => {
+  const wheel = (from, to) => {
     const r = -parseFloat(getComputedStyle(from).transformOrigin.split(" ")[2]) || 0;
     const lens = `translateZ(${r.toFixed(2)}px) perspective(${(slot.offsetHeight * DEPTH).toFixed(1)}px) translateZ(${(-r).toFixed(2)}px)`;
+    show(to);
     return Promise.all([
       roll(from, lens, [[0, 1], [STEP + PAST, SHADE], [STEP, SHADE]]),
       roll(to, lens, [[-STEP, SHADE], [PAST, 1], [0, 1]])
     ]);
+  };
+
+  /* a quick crossfade */
+  const fade = (from, to) => {
+    show(to);
+    return Promise.all([
+      play(from, { opacity: [1, 0] }, 340, { easing: "ease-in" }),
+      play(to, { opacity: [0, 1] }, 420, { delay: 180, easing: "ease-out" }),
+    ]);
+  };
+
+  /* a terminal: a blinking block caret backspaces over the old phrase and types the new one. The type stays
+     in Newsreader throughout: a monospace phrase would run far wider than the room the slot keeps, and would
+     jump when it turned back. So only the caret speaks terminal, a solid block a monospace cell wide. */
+  const BLINK = 130;
+  const type = async (from, to) => {
+    const a = geometry(from), b = geometry(to), em = a.em;
+    const caret = paint("fx-caret", 0, 0, .5 * em, .88 * em);
+    /* show the first k characters of a face, with the caret just after them */
+    const typed = (g, k) => {
+      clip(g, g.rows.map((row) => {
+        const n = Math.min(Math.max(k - row.first, 0), row.n);
+        return n === row.n ? true : n ? [-em, g.keys[row.first + n - 1].x] : null;
+      }));
+      const at = k ? g.keys[k - 1] : { row: g.rows[0], x: g.rows[0].x0 };
+      caret.style.color = g.color;
+      caret.style.transform = `translate(${pixels(at.x + .04 * em)}, ${pixels(at.row.base - .7 * em)})`;
+    };
+    /* keystrokes as [time, face, characters shown]: a held backspace, a blink, then typing at an uneven, human pace */
+    const keys = [];
+    let t = 2 * BLINK;
+    const held = Math.min(26, 300 / a.keys.length), pace = Math.min(60, 560 / b.keys.length);
+    for (let k = a.keys.length - 1; k >= 0; k--) keys.push([(t += held), a, k]);
+    t += 2 * BLINK;
+    for (let k = 1; k <= b.keys.length; k++) keys.push([(t += pace * (.5 + Math.random())), b, k]);
+    const end = t + 2 * BLINK;
+    typed(b, 0);
+    typed(a, a.keys.length);
+    show(to);
+    let done = 0, struck = 0;
+    await frames(end, (p) => {
+      const now = p * end;
+      while (done < keys.length && keys[done][0] <= now) {
+        struck = keys[done][0];
+        typed(keys[done][1], keys[done++][2]);
+      }
+      /* solid while keys are going, blinking whenever they stop */
+      caret.style.visibility = Math.floor((now - struck) / BLINK) % 2 ? "hidden" : "visible";
+    });
+  };
+
+  /* --- the themed effects: a moment from the trade's own world, whenever its phrase arrives --- */
+
+  /* chalk grain for the private schools: noise knocked out of the letters, cleared by raising the mask's floor */
+  const defs = document.createElementNS(NS, "svg");
+  defs.setAttribute("class", "fx-defs");
+  defs.setAttribute("aria-hidden", "true");
+  const chalkFilter = vector("filter", { id: "fx-chalk", x: "-5%", y: "-5%", width: "110%", height: "110%" }, defs);
+  vector("feTurbulence", { type: "fractalNoise", baseFrequency: ".5", numOctaves: "2", seed: "4", result: "noise" }, chalkFilter);
+  const grain = vector("feColorMatrix", { in: "noise", type: "matrix", result: "grain" }, chalkFilter);
+  vector("feComposite", { in: "SourceGraphic", in2: "grain", operator: "in" }, chalkFilter);
+  document.body.append(defs);
+  const dusty = (clean) => grain.setAttribute("values", `0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -4 ${(2.5 + clean * 3).toFixed(2)}`);
+
+  /* private schools: a board eraser scrubs the old phrase off, each line in turn and back again as a hand
+     would, leaving a haze of dust; then the new phrase is chalked in, left to right, and the grain settles */
+  const chalk = async (from, to) => {
+    const a = geometry(from), b = geometry(to), em = a.em;
+    const eraser = paint("fx-eraser", 0, 0, 1.1 * em, .52 * em);
+    const left = a.rows.map(() => true);
+    for (const [i, row] of a.rows.entries()) {
+      const rightward = i % 2 === 0, start = row.x0 + .42 * em, end = row.x1 + .12 * em;
+      const dust = paint("fx-dust", row.x0, row.base - .64 * em, 0, .7 * em);
+      dust.style.color = a.color;
+      await frames(220 + (row.x1 - row.x0) / em * 34, (p) => {
+        const x = rightward ? start + (end - start) * inOut(p) : end - (end - start) * inOut(p);
+        left[i] = rightward ? [x, a.w + em] : [-em, x];
+        clip(a, left);
+        Object.assign(dust.style, rightward ? { width: pixels(x - row.x0) } : { left: pixels(x), width: pixels(row.x1 - x) });
+        /* it lands, scrubs with a little wobble, and lifts */
+        eraser.style.opacity = Math.min(1, p * 7, (1 - p) * 7);
+        eraser.style.transform = `translate(${pixels(x - .55 * em)}, ${pixels(row.base - .6 * em + Math.sin(p * 19) * .025 * em)}) rotate(${(Math.sin(p * 9) * 3 - 6).toFixed(1)}deg)`;
+      });
+      left[i] = null;
+      play(dust, { opacity: 0 }, 700, { easing: "ease-out" });
+    }
+    const length = b.rows.reduce((sum, row) => sum + row.x1 - row.x0, 0);
+    dusty(0);
+    clip(b, []);
+    to.style.filter = "url(#fx-chalk)";
+    show(to);
+    await frames(480, (p) => {
+      let x = length * inOut(p);
+      clip(b, b.rows.map((row) => {
+        const w = row.x1 - row.x0, s = x <= 0 ? null : x >= w ? true : [-em, row.x0 + x];
+        x -= w;
+        return s;
+      }));
+    });
+    await frames(260, dusty);
+  };
+
+  /* architects: construction lines are ruled across, a drafting square sweeps the old phrase away and
+     leaves the new one behind in outline, then the ink goes in and the construction is rubbed out */
+  const blueprint = async (from, to) => {
+    const a = geometry(from), b = geometry(to), em = a.em;
+    const [x0, x1] = reach(a, b), left = x0 - .12 * em, right = x1 + .12 * em, hair = Math.max(1, .008 * em);
+    /* each line's ascender, x-height and baseline */
+    const guides = b.rows.flatMap((row) => [.72, .46, 0].map((h) => paint("fx-guide", left - .1 * em, row.base - h * em, right - left + .3 * em, hair)));
+    guides.forEach((line, i) => play(line, { transform: ["scaleX(0)", "none"] }, 300, { delay: i * 50 }));
+    await hold(280);
+    const top = b.rows[0].base - .8 * em;
+    const square = paint("fx-square", 0, top, hair * 1.5, b.rows.at(-1).base + .26 * em - top);
+    to.classList.add("fx-outline");
+    clip(b, []);
+    show(to);
+    await frames(560, (p) => {
+      const x = left + (right - left) * inOut(p);
+      square.style.transform = `translateX(${pixels(x)})`;
+      clip(a, a.rows.map(() => [x, a.w + em]));
+      clip(b, b.rows.map(() => [-em, x]));
+    });
+    await Promise.all([
+      play(to, { "--fx-fill": ["0%", "100%"] }, 360, { easing: "ease-out" }),
+      ...[square, ...guides].map((el) => play(el, { opacity: 0 }, 360, { easing: "ease-in" })),
+    ]);
+  };
+
+  /* photographers: the flash fires and blooms over the old phrase, the shutter snaps shut and open,
+     and the new phrase is there, overexposed for a moment before it settles */
+  const flash = async (from, to) => {
+    const g = geometry(from), em = g.em;
+    const top = -.03 * em, mid = g.h / 2, foot = g.h, x = -.12 * em, w = g.w + .52 * em;
+    const bloom = paint("fx-flash", -.4 * em, -.3 * em, g.w + .8 * em, g.h + .6 * em);
+    const upper = paint("fx-blade", x, top, w, mid - top), lower = paint("fx-blade", x, mid, w, foot - mid);
+    const burn = "brightness(2.3) saturate(.5)";
+    const lit = bloom.animate({ opacity: [0, 1, 0], offset: [0, .14, 1], easing: ["ease-out", "ease-in-out"] }, { duration: 820, fill: "both" }).finished;
+    play(from, { filter: ["none", burn] }, 110, { easing: "ease-out" });
+    await Promise.all([
+      play(upper, { transform: ["translateY(-110%)", "none"] }, 80, { delay: 90, easing: "ease-in" }),
+      play(lower, { transform: ["translateY(110%)", "none"] }, 80, { delay: 90, easing: "ease-in" }),
+    ]);
+    hide(from);
+    show(to);
+    play(to, { filter: [burn, "none"] }, 640, { delay: 50, easing: "ease-out" });
+    await Promise.all([
+      play(upper, { transform: ["none", "translateY(-110%)"] }, 150, { delay: 50, easing: "ease-out" }),
+      play(lower, { transform: ["none", "translateY(110%)"] }, 150, { delay: 50, easing: "ease-out" }),
+      lit,
+    ]);
+  };
+
+  /* law offices: a black bar is swept over each line of the old phrase, and peels away off the new one */
+  const redact = async (from, to) => {
+    const a = geometry(from), b = geometry(to), em = a.em;
+    const bars = a.rows.map((row, i) => {
+      const [x0, x1] = reach({ rows: [row, b.rows[i] || row] });
+      return paint("fx-bar", x0 - .06 * em, row.base - .79 * em, x1 - x0 + .12 * em, .99 * em);   /* ascenders to descenders, with a hair between lines */
+    });
+    await Promise.all(bars.map((bar, i) => play(bar, { transform: ["scaleX(0)", "none"] }, 280, { delay: i * 150, easing: "cubic-bezier(.6,0,.25,1)" })));
+    hide(from);
+    show(to);
+    await hold(180);
+    await Promise.all(bars.map((bar, i) => play(bar, { transform: ["none", "scaleY(0)"] }, 260, { delay: i * 90, easing: "cubic-bezier(.55,0,.75,.3)" })));
+  };
+
+  /* medical practices: a heart monitor's trace sweeps through in the new phrase's shade, beating two or three
+     times across the line, so it reads as a pulse and never as a line struck through the words.
+     Like a monitor's sweep it wipes the old phrase just ahead of the dot and writes the new one behind it. */
+  const BEAT = [[-.62, 0], [-.56, -.05], [-.5, -.07], [-.44, -.05], [-.38, 0], [-.14, 0], [-.08, .05], [0, -.52],
+    [.07, .17], [.13, 0], [.32, 0], [.4, -.08], [.48, -.11], [.56, -.08], [.64, 0]];   /* P, QRS, T, in em */
+  const PULSE = 3;   /* about one beat per 3em of line, two at least and three at most, so the words stay legible */
+  const ecg = async (from, to) => {
+    const a = geometry(from), b = geometry(to), em = a.em;
+    const [x0, x1] = reach(a, b), left = x0 - .15 * em, right = x1 + .3 * em;
+    const count = Math.min(3, Math.max(2, Math.round((right - left) / (PULSE * em)))), gap = (right - left) / count;
+    const beats = Array.from({ length: count }, (_, k) => left + (k + .5) * gap);
+    const svg = vector("svg", { class: "fx-trace", "aria-hidden": "true" }, layer);
+    Object.assign(svg.style, { width: pixels(a.w), height: pixels(a.h), color: b.color });
+    const traces = b.rows.map((row) => {
+      const y = row.base - .27 * em;
+      const pts = [[left, y], ...beats.flatMap((beat) => BEAT.map(([u, v]) => [beat + u * em, y + v * em])), [right, y]];
+      vector("polyline", { points: pts.map((pt) => pt.map((n) => n.toFixed(1)).join(",")).join(" ") }, svg);
+      const blip = paint("fx-blip", 0, 0, .09 * em, .09 * em);
+      blip.style.color = b.color;
+      return { pts, blip };
+    });
+    const heightAt = (pts, x) => {
+      const i = Math.max(1, pts.findIndex(([u]) => u >= x));
+      const [[xa, ya], [xb, yb]] = [pts[i - 1], pts[i]];
+      return ya + (yb - ya) * Math.min(1, Math.max(0, (x - xa) / (xb - xa || 1)));
+    };
+    clip(b, []);
+    show(to);
+    await frames(950, (p) => {
+      const x = left + (right - left) * p;
+      svg.style.clipPath = `inset(-1em ${pixels(a.w - x)} -1em -1em)`;
+      clip(a, a.rows.map(() => [x + .14 * em, a.w + em]));
+      clip(b, b.rows.map(() => [-em, x]));
+      for (const { pts, blip } of traces) blip.style.transform = `translate(${pixels(x - .045 * em)}, ${pixels(heightAt(pts, x) - .045 * em)})`;
+    });
+    await Promise.all([...layer.children].map((el) => play(el, { opacity: 0 }, 300, { easing: "ease-in" })));
+  };
+
+  /* breweries: the old phrase drains away, then each letter is a glass, filled from the bottom with the
+     phrase's own shade under a head of foam that rises out of the top */
+  const pour = async (from, to) => {
+    const a = geometry(from), em = a.em;
+    await frames(300, (p) => clip(a, a.rows.map((row) => [-em, a.w + em, row.base - .8 * em + p * p * 1.05 * em])));
+    hide(from);
+    to.classList.add("fx-pour");
+    show(to);
+    await Promise.all([...to.querySelectorAll(".seg")].map((seg) => play(seg, {
+      backgroundPosition: ["0 0%", "0 100%", "0 100%"],
+      "--fx-glass": ["40%", "40%", "0%"],
+      offset: [0, .8, 1],
+    }, 900, { easing: "cubic-bezier(.3,.5,.4,1)" })));
+  };
+
+  /* musicians: the old phrase drops out on the downbeat, and the new one's letters land one per
+     sixteenth note, the downbeats falling from higher and landing harder */
+  const SIXTEENTH = 84;
+  const beat = async (from, to) => {
+    const b = geometry(to), em = b.em;
+    const o = slot.getBoundingClientRect(), set = paint("fx-set", 0, 0);
+    set.style.color = b.color;
+    const letters = b.keys.filter((k) => k.ch !== " ").map((k) => {
+      const el = paint("fx-letter", k.left, k.top, undefined, undefined, set);
+      el.textContent = k.ch;
+      return el;
+    });
+    /* each letter is placed by its box; shift them all so the first one's type lands where the phrase's does */
+    const range = document.createRange();
+    range.selectNodeContents(letters[0]);
+    const r = range.getBoundingClientRect(), first = b.keys.find((k) => k.ch !== " ");
+    set.style.transform = `translate(${pixels(first.left - (r.left - o.left))}, ${pixels(first.top - (r.top - o.top))})`;
+    play(from, { transform: ["none", "translateY(-.05em)", "translateY(.3em)"], opacity: [1, 1, 0] }, 240, { easing: "ease-in" });
+    await Promise.all(letters.map((el, i) => {
+      const lift = i % 4 ? .24 : .46;
+      return play(el, {
+        transform: [`translateY(-${lift}em)`, "none", `translateY(-${(lift / 6).toFixed(3)}em)`, "none"],
+        opacity: [0, 1, 1, 1],
+        offset: [0, .5, .75, 1],
+        easing: ["ease-in", "ease-out", "ease-in"],
+      }, 280, { delay: 160 + i * SIXTEENTH, easing: "linear" });
+    }));
+    show(to);
+  };
+
+  /* design studios: the old phrase is drag-selected, sits selected with its grips for a beat, is deleted,
+     and the new one is pasted in, the selection snapping to it before it lets go */
+  const marquee = async (from, to) => {
+    const a = geometry(from), b = geometry(to), em = a.em;
+    const grip = Math.round(Math.min(9, Math.max(5, .055 * em)));
+    const bounds = (g) => {
+      const [x0, x1] = reach(g);
+      return [x0 - .08 * em, Math.max(g.rows[0].base - .78 * em, grip / 2 - .03 * em),
+        x1 + .08 * em, Math.min(g.rows.at(-1).base + .26 * em, g.h - .04 * em - grip / 2)];   /* inside the slot's band */
+    };
+    const svg = vector("svg", { class: "fx-marquee", "aria-hidden": "true" }, layer);
+    Object.assign(svg.style, { width: pixels(a.w), height: pixels(a.h) });
+    const box = vector("rect", {}, svg);
+    const grips = Array.from({ length: 8 }, () => vector("rect", { class: "grip", width: grip, height: grip }, svg));
+    /* half-pixel edges keep the dashes crisp */
+    const crisp = (n) => Math.round(n) + .5;
+    const place = ([x0, y0, x1, y1]) => {
+      [x0, y0, x1, y1] = [x0, y0, x1, y1].map(crisp);
+      Object.entries({ x: x0, y: y0, width: Math.max(0, x1 - x0), height: Math.max(0, y1 - y0) }).forEach(([k, v]) => box.setAttribute(k, v));
+      const xs = [x0, (x0 + x1) / 2, x1], ys = [y0, (y0 + y1) / 2, y1];
+      let i = 0;
+      for (const y of ys) for (const x of xs) {
+        if (x === xs[1] && y === ys[1]) continue;
+        grips[i].setAttribute("x", Math.round(x - grip / 2) + .5);
+        grips[i++].setAttribute("y", Math.round(y - grip / 2) + .5);
+      }
+    };
+    const A = bounds(a), B = bounds(b);
+    await frames(240, (p) => place([A[0], A[1], A[0] + (A[2] - A[0]) * out(p), A[1] + (A[3] - A[1]) * out(p)]));
+    svg.classList.add("held");
+    box.animate({ strokeDashoffset: [0, -18] }, { duration: 600, iterations: Infinity });
+    await hold(240);
+    hide(from);
+    await hold(140);
+    show(to);
+    await frames(170, (p) => place(A.map((n, i) => n + (B[i] - n) * out(p))));
+    await hold(260);
+  };
+
+  /* accounting firms: a sum line is ruled, the new phrase comes in above it as the total, and a second
+     rule makes it a double underline. Both rules are as long as the total's own lines. */
+  const ledger = async (from, to) => {
+    const b = geometry(to), em = b.em;
+    const rules = (drop) => b.rows.map((row) =>
+      paint("fx-ledger", row.x0 - .03 * em, row.base + drop * em, row.x1 - row.x0 + .06 * em, Math.max(1, .02 * em)));
+    const sum = rules(.09);
+    await Promise.all(sum.map((rule) => play(rule, { transform: ["scaleX(0)", "none"] }, 240)));
+    show(to);
+    await Promise.all([
+      play(from, { opacity: [1, 0] }, 220, { easing: "ease-in" }),
+      play(to, { opacity: [0, 1] }, 260, { delay: 100, easing: "ease-out" }),
+    ]);
+    const total = rules(.15);
+    await Promise.all(total.map((rule) => play(rule, { transform: ["scaleX(0)", "none"] }, 200)));
+    await hold(160);
+    await Promise.all([...sum, ...total].map((rule) => play(rule, { opacity: 0 }, 240, { easing: "ease-in" })));
+  };
+
+  /* fellow Portlanders: a light drizzle; the old phrase washes out and the new one comes up clear */
+  const drizzle = async (from, to) => {
+    const g = geometry(from), em = g.em, fall = pixels(g.h + .9 * em);
+    for (let i = 0; i < 30; i++) {
+      const drop = paint("fx-drop", -.1 * em + Math.random() * (g.w + .5 * em), -.5 * em, Math.max(1, .012 * em), .34 * em);
+      play(drop, { transform: ["rotate(12deg)", `rotate(12deg) translateY(${fall})`] }, 380 + Math.random() * 140, { delay: Math.random() * 560, easing: "linear" });
+    }
+    show(to);
+    await Promise.all([
+      play(from, { opacity: [1, 0], filter: ["none", "blur(.03em)"], transform: ["none", "translateY(.04em)"] }, 620, { delay: 120, easing: "ease-in" }),
+      play(to, { opacity: [0, 1], filter: ["blur(.03em)", "none"] }, 500, { delay: 560, easing: "ease-out" }),
+    ]);
+  };
+
+  /* a themed phrase always arrives in its own effect; any other draws a general one, never the last one again.
+     Sensitive or abstract groups (congregations, non-profits, community groups, family businesses) stay general. */
+  const THEMED = {
+    "private schools": chalk, architects: blueprint, photographers: flash, "law offices": redact,
+    "medical practices": ecg, breweries: pour, musicians: beat, "design studios": marquee,
+    "accounting firms": ledger, "fellow Portlanders": drizzle,
+  };
+  const GENERAL = [wheel, fade, type];
+
+  /* put both faces back to plain type, whatever the effect did: the new one on show, the old one hidden */
+  const settle = (from, to) => {
+    for (const face of [from, to]) {
+      face.getAnimations({ subtree: true }).forEach((anim) => anim.cancel());
+      face.style.clipPath = face.style.filter = "";
+      face.classList.remove("fx-outline", "fx-pour");
+    }
+    hide(from);
+    show(to);
+    layer.replaceChildren();
   };
 
   /* shuffle bag: every phrase once per round in random order, never the same one twice in a row.
@@ -347,23 +881,25 @@ const BREAKS = { entrepreneurs: "entre|preneurs", freelancers: "free|lancers" };
     return bag.shift();
   };
 
-  let shown = 0, timer = 0, busy = false, began = 0;
+  let shown = 0, timer = 0, busy = false, last = null;
 
-  const advance = () => {
+  const advance = async () => {
     timer = 0;
     if (busy || document.hidden || still.matches || faces.length < 2) return;
-    const next = draw(shown);
-    const from = faces[shown], to = faces[next];
+    const next = draw(shown), from = faces[shown], to = faces[next];
+    const pool = GENERAL.filter((effect) => effect !== last);
+    const effect = THEMED[KINDS[next]] || pool[Math.floor(Math.random() * pool.length)];
     busy = true;
-    began = performance.now();
-    to.classList.remove("off");
-    turn(from, to).then(() => {
-      from.classList.add("off");
-      for (const el of [from, to]) el.getAnimations().forEach((a) => a.cancel());
+    const began = performance.now();
+    try {
+      await effect(from, to);
+    } finally {
+      settle(from, to);
+      last = effect;
       shown = next;
       busy = false;
-      schedule(PERIOD - (performance.now() - began));   /* the period includes the turn */
-    });
+      schedule(Math.max(PERIOD - (performance.now() - began), PERIOD - LONG));   /* the period includes the swap */
+    }
   };
   const schedule = (wait) => {
     clearTimeout(timer);

@@ -94,6 +94,25 @@ def woff2_tables(b):
     return tags
 
 
+def phrase_errors(src):
+    """Phrases that would break the phone layout, where every phrase must split over exactly two lines."""
+    kinds = re.findall(r'"([^"]*)"', re.search(r"const KINDS = \[(.*?)\];", src, re.S).group(1))
+    breaks_m = re.search(r"const BREAKS = \{(.*?)\};", src, re.S)
+    breaks = dict(re.findall(r'(\w+):\s*"([^"]*)"', breaks_m.group(1))) if breaks_m else {}
+    errs = []
+    for k in kinds:
+        if " " not in k and "-" not in k and k not in breaks:
+            errs.append(f'phrase "{k}" has no space, hyphen or BREAKS entry, so phones would show a blank line')
+    for word, split in breaks.items():
+        if split.replace("|", "") != word or split.count("|") != 1:
+            errs.append(f'BREAKS entry {word}: "{split}" must be the word with one "|"')
+        if word not in kinds:
+            errs.append(f'BREAKS entry {word} is not in KINDS (stale)')
+    if len(set(kinds)) != len(kinds):
+        errs.append("KINDS has a duplicate phrase")
+    return errs
+
+
 def font_face(chars):
     url = (f"https://fonts.googleapis.com/css2?family={FONT_FAMILY}:{FONT_AXES}&display=swap&text="
            + urllib.parse.quote(chars))
@@ -157,6 +176,9 @@ def lint(page, headers):
 
 def build(out=PUBLIC):
     src = (SRC / "index.html").read_text()
+    errs = phrase_errors(src)
+    if errs:
+        fail("phrase list:\n  - " + "\n  - ".join(errs))
     chars = charset(src)
     face, font_bytes = font_face(chars)
     page = (src.replace("__LOGO_ART__", data_uri(SRC / "logo-art.webp", "image/webp"))
