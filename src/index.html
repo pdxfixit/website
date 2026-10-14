@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDXfixIT</title>
+<meta name="description" content="Helping businesses of all sizes, including non-profits, make and implement technical decisions since 1996. Portland, Oregon.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="__FAVICON__">
+<style>
+/* Lapel, set in Newsreader. The brand is worn high on the page's shoulder; the sentence
+   sits low and large with a ragged right, and the Portland strip is stitched in as the hem.
+   One family does all the talking: its display cut for the sentence, its text cut for the rest. */
+:root{
+  --ground:#E4D6C8;          /* the brand brown, washed to a quarter */
+  --ink:#24170F;
+  --muted:#6B4C37;
+  --orange:#F6921D;
+  --badge-shadow:rgba(60,32,14,.3);
+  --glow-a:.55;
+
+  --serif:"Newsreader",Georgia,serif;
+  --gutter:clamp(16px,5.5vw,84px);
+  --ease:cubic-bezier(.65,0,.35,1);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ground:#2A1E17;        /* espresso: the brand brown with the lights down */
+    --ink:#F2E7DB;
+    --muted:#BBA08A;
+    --badge-shadow:rgba(0,0,0,.5);
+    --glow-a:.75;
+    color-scheme:dark;
+  }
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{background:var(--ground)}
+body{
+  margin:0;min-height:100svh;
+  display:grid;grid-template-rows:auto 1fr auto;grid-template-columns:minmax(0,1fr);
+  background:var(--ground);color:var(--ink);
+  font:400 16px/1.45 var(--serif);
+  font-optical-sizing:auto;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+::selection{background:var(--orange);color:#24170F}
+a{color:inherit}
+:focus-visible{outline:2px solid currentColor;outline-offset:4px;border-radius:4px}
+
+/* --- the shoulder: where the badge is worn --- */
+.shoulder{padding:clamp(22px,5.5vh,56px) var(--gutter) 0}
+
+/* the badge: the shipped plate logo, as is, square to the sentence's left edge. The plate is its
+   own ground, so it reads the same on either theme; one soft shadow says it is worn on the page. */
+.badge{
+  --s:clamp(58px,5.4vw,80px);   /* plate height; the live site wears it at 77px */
+  width:max-content;margin:0;line-height:0;
+  filter:drop-shadow(0 calc(var(--s) * .05) calc(var(--s) * .07) var(--badge-shadow));
+}
+.badge svg{display:block;height:var(--s);width:calc(var(--s) * 814 / 305)}
+
+/* --- the sentence: low, large, ragged right ---
+   Two measurements, both taken live, set the type size, and the smaller one wins:
+   --widest, the widest line in ems over every phrase in KINDS, makes that line fill the measure;
+   --rest (everything on the page but the sentence) and --lines (the sentence's height in ems)
+   make the sentence fill the height left under the badge, so the first frame is always complete. */
+.say{
+  --fill:max(calc((100svh - var(--rest,300px)) / var(--lines,5.1)),40px);
+  --t:min(calc((100vw - 2 * var(--gutter)) / var(--widest,8.3)),var(--fill),148px);
+  align-self:end;
+  display:grid;grid-template-columns:minmax(0,1fr);
+  padding:clamp(28px,6vh,72px) var(--gutter) clamp(26px,5.2vh,54px);
+}
+.tag{
+  grid-area:1/1;align-self:last baseline;
+  margin:0;
+  font:340 var(--t)/1.02 var(--serif);
+  letter-spacing:-.022em;
+  font-kerning:normal;
+}
+.ln,.seg{white-space:nowrap}   /* every break is set by hand, so no line depends on the type size */
+.ln{display:block}
+.hy{display:none}           /* a hyphen that only appears where a word is broken, on phones */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* the slot is a drum turning on a horizontal axis, and each phrase is one face of it.
+   Every phrase sits in the slot's one grid cell, so the line keeps the widest one's room.
+   A face is one line box tall (two on phones); neighbouring faces meet at --step, which puts
+   the axis --r behind the face. The window is the line's band, from the ascenders' tops to just
+   under the descenders (measured: ascender .74em, descender .22em), so a turning face never
+   paints over the lines above or below. */
+.slot{
+  --face:1.02em;
+  --step:60deg;
+  --r:calc(var(--face) / 2 / tan(var(--step) / 2));
+  display:grid;justify-items:start;align-items:last baseline;
+  width:max-content;
+  clip-path:inset(-.03em -.4em .04em -.12em);
+}
+.ph{
+  grid-area:1/1;white-space:nowrap;
+  transform-origin:50% 50% calc(-1 * var(--r));
+  backface-visibility:hidden;
+}
+.ph.off,.slot .rm{visibility:hidden}
+.slot .rm{display:none}
+
+/* "Say hello" sits in the rag of the last line, on its baseline, flush with the hem's right end */
+.say .cta{grid-area:1/1;justify-self:end;align-self:last baseline}
+
+/* hot-metal CTA: copper at rest, incandescent as the pointer closes in */
+.cta{
+  --h:max(var(--heat,0),var(--lit,0));
+  position:relative;isolation:isolate;
+  display:inline-block;
+  padding:.6em 1.3em .66em;
+  border-radius:999px;
+  font:560 clamp(19px,1.6vw,22px)/1.1 var(--serif);
+  letter-spacing:.004em;
+  color:#1E1109;text-decoration:none;
+  background:#D87618;
+  background:color-mix(in oklab,#C2691C,#FFBE5C calc(var(--h) * 100%));
+  box-shadow:
+    inset 0 1px 0 rgba(255,236,200,calc(.35 + var(--h) * .45)),
+    inset 0 -2px 0 rgba(110,40,0,calc(.35 - var(--h) * .2)),
+    0 0 calc(2px + var(--h) * 34px) calc(var(--h) * 5px) rgba(255,146,30,calc(var(--h) * var(--glow-a))),
+    0 0 calc(var(--h) * 90px) calc(var(--h) * 10px) rgba(255,120,10,calc(var(--h) * var(--glow-a) * .45));
+}
+.cta::before{ /* white-hot core */
+  content:"";position:absolute;inset:0;border-radius:inherit;z-index:-1;
+  background:radial-gradient(60% 90% at 50% 45%,rgba(255,246,214,.95),rgba(255,214,140,0) 70%);
+  opacity:calc(var(--h) * 1.2 - .25);
+}
+.cta:focus-visible{--lit:1;outline:2px solid var(--ink);outline-offset:5px;border-radius:999px}
+.cta:active{transform:translateY(1px)}
+@media (hover:none){ .cta{--lit:.55} }
+
+/* --- the hem: the Portland strip as the page's footer line --- */
+.hem{
+  display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px 24px;
+  margin:0 var(--gutter);
+  padding:15px 0 22px;
+  border-top:1px solid color-mix(in oklab,var(--muted) 35%,transparent);
+  font-size:16px;color:var(--muted);
+}
+.here,.links{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 20px}
+.here{gap:6px 14px}
+.here time{color:var(--ink);font-variant-numeric:lining-nums tabular-nums;min-width:4.4em}
+.links a{text-decoration:none;color:var(--ink);background:linear-gradient(currentColor,currentColor) 0 100%/100% 1px no-repeat;padding-bottom:1px}
+.links a:hover{background-size:100% 2px}
+
+/* still pages say it all at once */
+@media (prefers-reduced-motion:reduce){
+  .slot .ph{display:none}
+  .slot .rm{display:block;visibility:visible}
+}
+
+/* narrower than the rag can hold "Say hello": it drops below the sentence */
+@media (max-width:759px){
+  .say .cta{grid-area:2/1;justify-self:start;align-self:start;margin-top:clamp(26px,4vh,36px)}
+}
+
+/* phones, and any portrait screen up to a tablet: the sentence becomes a tall column of short
+   lines, one or two words each, and grows until it fills the height under the badge. Every phrase
+   breaks over exactly two lines, and the two-line block is one face of the drum, so a turn
+   still moves nothing else. */
+@media (max-width:640px), (orientation:portrait) and (max-width:1024px){
+  .say{
+    --t:min(calc((100vw - 2 * var(--gutter)) / var(--widest,4.6)),var(--fill));
+    padding-top:34px;padding-bottom:22px;
+  }
+  .tag{line-height:1.01;letter-spacing:-.018em}
+  .slot{--face:2.02em}
+  .seg{display:block;width:max-content}   /* each line only as wide as its words */
+  .hy{display:inline}
+  .say .cta{grid-area:2/1;justify-self:start;align-self:start;margin-top:clamp(26px,4vh,36px)}
+}
+@media (max-width:640px){
+  .shoulder{padding-top:22px}
+  .badge{--s:54px}
+  .hem{font-size:15px;padding:13px 0 18px;gap:6px 24px}
+  .links{gap:6px 18px}
+}
+</style>
+</head>
+<body>
+
+<header class="shoulder">
+  <h1 class="badge">
+    <svg viewBox="0 0 814 305" role="img" aria-label="PDXfixIT">
+      <rect width="814" height="305" rx="24" fill="#935403"/>
+      <!-- the cable, carried on from the artwork's edge to the plate's, as on the shipped badge -->
+      <rect x="132" y="250" width="26" height="26" fill="#9C9C9C"/>
+      <rect x="133" y="250" width="24" height="23" fill="#FFF"/>
+      <rect x="137.5" y="274" width="14" height="31" fill="#8F8F8F"/>
+      <rect x="139" y="274" width="11" height="31" fill="#FFF"/>
+      <image x="44" y="59" width="720" height="201" href="__LOGO_ART__"/>
+    </svg>
+  </h1>
+</header>
+
+<main class="say">
+  <p class="tag">
+    <span class="sr">Helping businesses of all sizes, including non-profits, make and implement technical decisions since 1996.</span>
+    <span aria-hidden="true">
+      <span class="ln">Helping</span>
+      <span class="ln slot" id="slot"><span class="ph"><span class="seg">small </span><span class="seg">businesses</span></span><span class="rm"><span class="seg">businesses </span><span class="seg">of all sizes</span></span></span>
+      <span class="ln"><span class="seg">make and </span><span class="seg">implement</span></span>
+      <span class="ln"><span class="seg">technical </span><span class="seg">decisions</span></span>
+      <span class="ln">since 1996.</span>
+    </span>
+  </p>
+
+  <a class="cta" id="cta" href="mailto:info@pdxfixit.com">Say hello</a>
+</main>
+
+<footer class="hem">
+  <div class="here">
+    <span>Portland, Oregon</span>
+    <time id="clock" datetime="">--:--</time>
+  </div>
+  <nav class="links" aria-label="Elsewhere">
+    <a href="https://github.com/PDXfixIT">GitHub</a>
+    <a href="https://www.linkedin.com/in/sandbergpdx">LinkedIn</a>
+    <a href="mailto:info@pdxfixit.com">info@pdxfixit.com</a>
+  </nav>
+</footer>
+
+<script>
+/* The phrases that take the place of "businesses". Add, remove or reorder freely. */
+const KINDS = ["small businesses", "mid-size businesses", "home businesses", "entrepreneurs", "consulting firms", "freelancers", "non-profits"];
+
+/* On phones every phrase takes two short lines. Phrases break at their first space, or failing that their hyphen;
+   a single word needs its break point written here, with "|" where the hyphen goes. */
+const BREAKS = { entrepreneurs: "entre|preneurs", freelancers: "free|lancers" };
+
+{
+  "use strict";
+
+  /* live Portland clock */
+  const clock = document.getElementById("clock");
+  const fmt = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" });
+  const tick = () => {
+    const now = new Date();
+    clock.textContent = fmt.format(now).toLowerCase();
+    clock.setAttribute("datetime", now.toISOString());
+  };
+  tick();
+  setInterval(tick, 15000);
+
+  /* the CTA warms as a mouse or pen closes in (touch gets a fixed warmth in CSS) */
+  const cta = document.getElementById("cta");
+  let raf = 0, px = -1e4, py = -1e4;
+  const heat = () => {
+    raf = 0;
+    const r = cta.getBoundingClientRect();
+    const dx = Math.max(r.left - px, 0, px - r.right), dy = Math.max(r.top - py, 0, py - r.bottom);
+    const h = Math.max(0, 1 - Math.hypot(dx, dy) / 280);
+    cta.style.setProperty("--heat", (h * h * (3 - 2 * h)).toFixed(3));
+  };
+  const reheat = () => { if (!raf) raf = requestAnimationFrame(heat); };
+  addEventListener("pointermove", (e) => {
+    if (e.pointerType === "touch") return;
+    px = e.clientX; py = e.clientY;
+    reheat();
+  }, { passive: true });
+  document.documentElement.addEventListener("pointerleave", () => { px = py = -1e4; reheat(); });
+  addEventListener("scroll", reheat, { passive: true });
+
+  /* split a phrase into its two phone lines: [first, second, hyphen shown only when broken] */
+  const split = (text) => {
+    const hand = BREAKS[text];
+    if (hand) { const [a, b] = hand.split("|"); return [a, b, true]; }
+    const sp = text.indexOf(" "), hy = text.indexOf("-");
+    if (sp > 0) return [text.slice(0, sp + 1), text.slice(sp + 1), false];
+    if (hy > 0) return [text.slice(0, hy + 1), text.slice(hy + 1), false];
+    return [text, "", false];
+  };
+  const segment = (text) => {
+    const el = document.createElement("span");
+    el.className = "seg";
+    el.textContent = text;
+    return el;
+  };
+
+  /* every phrase is a face of the drum, stacked in the slot's one grid cell */
+  const slot = document.getElementById("slot");
+  const still = matchMedia("(prefers-reduced-motion: reduce)");
+  slot.querySelector(".ph").remove();
+  const faces = KINDS.map((text, i) => {
+    const [a, b, broken] = split(text);
+    const face = document.createElement("span");
+    face.className = i === 0 ? "ph" : "ph off";
+    const first = segment(a);
+    if (broken) {
+      const hy = document.createElement("span");
+      hy.className = "hy";
+      hy.textContent = "-";
+      first.append(hy);
+    }
+    face.append(first);
+    if (b) face.append(segment(b));
+    slot.insertBefore(face, slot.querySelector(".rm"));
+    return face;
+  });
+
+  /* one turn of the drum: the face on show rolls up and over the top, away from the light, as the
+     next comes up from below. Both ride the same axis on the same clock, so they stay joined at
+     the edge. Each face is seen square on, from DEPTH face-heights away, so the drum foreshortens
+     without the type appearing to lean or swell. It runs a hair past and settles back, like a detent catching. */
+  const PERIOD = 3200, TURN = 820, CATCH = .84, PAST = 2.5, SHADE = .15, DEPTH = 16;
+  const STEP = parseFloat(getComputedStyle(slot).getPropertyValue("--step")) || 60;
+  const EASE = getComputedStyle(document.documentElement).getPropertyValue("--ease").trim() || "ease-in-out";
+  const roll = (face, lens, [a, b, c]) => {
+    const at = ([deg, light]) => ({ transform: `${lens} rotateX(${deg}deg)`, opacity: light });
+    return face.animate([
+      { ...at(a), easing: EASE },
+      { ...at(b), offset: CATCH, easing: "ease-in-out" },
+      at(c)
+    ], { duration: TURN, fill: "both" }).finished;
+  };
+  /* perspective() looks from the transform origin, which sits on the axis; stepping out to the
+     face and back puts the eye DEPTH face-heights in front of the face, so a face at rest is
+     drawn exactly as the type around it is */
+  const turn = (from, to) => {
+    const r = -parseFloat(getComputedStyle(from).transformOrigin.split(" ")[2]) || 0;
+    const lens = `translateZ(${r.toFixed(2)}px) perspective(${(slot.offsetHeight * DEPTH).toFixed(1)}px) translateZ(${(-r).toFixed(2)}px)`;
+    return Promise.all([
+      roll(from, lens, [[0, 1], [STEP + PAST, SHADE], [STEP, SHADE]]),
+      roll(to, lens, [[-STEP, SHADE], [PAST, 1], [0, 1]])
+    ]);
+  };
+
+  /* shuffle bag: every phrase once per round in random order, never the same one twice in a row.
+     The first round leaves out the phrase already on screen. */
+  const shuffled = (list) => {
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+    return list;
+  };
+  let bag = shuffled(faces.map((_, i) => i).slice(1));
+  const draw = (current) => {
+    if (!bag.length) {
+      bag = shuffled(faces.map((_, i) => i));
+      if (bag[0] === current) bag.push(bag.shift());   /* across a round's seam: send it to the back */
+    }
+    return bag.shift();
+  };
+
+  let shown = 0, timer = 0, busy = false, began = 0;
+
+  const advance = () => {
+    timer = 0;
+    if (busy || document.hidden || still.matches || faces.length < 2) return;
+    const next = draw(shown);
+    const from = faces[shown], to = faces[next];
+    busy = true;
+    began = performance.now();
+    to.classList.remove("off");
+    turn(from, to).then(() => {
+      from.classList.add("off");
+      for (const el of [from, to]) el.getAnimations().forEach((a) => a.cancel());
+      shown = next;
+      busy = false;
+      schedule(PERIOD - (performance.now() - began));   /* the period includes the turn */
+    });
+  };
+  const schedule = (wait) => {
+    clearTimeout(timer);
+    timer = 0;
+    if (busy || document.hidden || still.matches) return;
+    timer = setTimeout(advance, Math.max(0, typeof wait === "number" ? wait : PERIOD));
+  };
+
+  /* measure the sentence for the CSS that sizes it: its widest line (over every phrase in
+     KINDS, since the hidden ones keep their layout), its height in ems, and the height of
+     everything else on the page. None of these depends on the type size, so one pass settles it. */
+  const say = document.querySelector(".say"), tag = document.querySelector(".tag");
+  const around = [document.querySelector(".shoulder"), document.querySelector(".hem")];
+  const fit = () => {
+    const em = parseFloat(getComputedStyle(tag).fontSize), range = document.createRange();
+    let widest = 0;
+    for (const ln of tag.querySelectorAll(".ln")) {
+      range.selectNodeContents(ln);
+      widest = Math.max(widest, range.getBoundingClientRect().width / em);
+    }
+    if (!widest) return;
+    const tagH = tag.getBoundingClientRect().height;
+    const rest = around.reduce((h, el) => h + el.getBoundingClientRect().height, say.getBoundingClientRect().height - tagH);
+    say.style.setProperty("--widest", (widest + .04).toFixed(3));
+    say.style.setProperty("--lines", (tagH / em).toFixed(3));
+    say.style.setProperty("--rest", Math.ceil(rest + 2) + "px");
+  };
+  let refit = 0;
+  document.fonts.ready.then(fit);
+  addEventListener("resize", () => { cancelAnimationFrame(refit); refit = requestAnimationFrame(fit); });
+  still.addEventListener("change", () => { fit(); schedule(); });
+
+  document.addEventListener("visibilitychange", () => schedule());
+  schedule();
+}
+</script>
+</body>
+</html>
