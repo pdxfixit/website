@@ -16,7 +16,7 @@
   --ink:#24170F;
   --muted:#6B4C37;
   --orange:#F6921D;
-  --badge-shadow:rgba(60,32,14,.3);
+  --wordmark-filter:none;    /* the logo's black wordmark, as drawn */
   --glow-a:.55;
 
   --serif:"Newsreader",Georgia,serif;
@@ -29,7 +29,7 @@
     --ground:#2A1E17;        /* espresso: the brand brown with the lights down */
     --ink:#F2E7DB;
     --muted:#BBA08A;
-    --badge-shadow:rgba(0,0,0,.5);
+    --wordmark-filter:url(#to-white);   /* black lettering would vanish on espresso */
     --glow-a:.75;
     color-scheme:dark;
   }
@@ -53,14 +53,14 @@ a{color:inherit}
 /* --- the shoulder: where the badge is worn --- */
 .shoulder{padding:clamp(22px,5.5vh,56px) var(--gutter) 0}
 
-/* the badge: the shipped plate logo, as is, square to the sentence's left edge. The plate is its
-   own ground, so it reads the same on either theme; one soft shadow says it is worn on the page. */
+/* the badge: the shipped logo with no plate, straight on the ground and square to the sentence's
+   left edge. Sizes are in units of the old plate's height, so the ring stays the size it was. */
 .badge{
-  --s:clamp(58px,5.4vw,80px);   /* plate height; the live site wears it at 77px */
+  --s:clamp(58px,5.4vw,80px);   /* the old plate's height; the live site wore it at 77px */
   width:max-content;margin:0;line-height:0;
-  filter:drop-shadow(0 calc(var(--s) * .05) calc(var(--s) * .07) var(--badge-shadow));
 }
-.badge svg{display:block;height:var(--s);width:calc(var(--s) * 814 / 305)}
+.badge svg{display:block;height:calc(var(--s) * 246 / 305);width:calc(var(--s) * 720 / 305)}
+.badge .wordmark{filter:var(--wordmark-filter)}
 
 /* --- the sentence: low, large, ragged right ---
    Two measurements, both taken live, set the type size, and the smaller one wins:
@@ -147,8 +147,6 @@ a{color:inherit}
   font-size:16px;color:var(--muted);
 }
 .here,.links{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 20px}
-.here{gap:6px 14px}
-.here time{color:var(--ink);font-variant-numeric:lining-nums tabular-nums;min-width:4.4em}
 .links a{text-decoration:none;color:var(--ink);background:linear-gradient(currentColor,currentColor) 0 100%/100% 1px no-repeat;padding-bottom:1px}
 .links a:hover{background-size:100% 2px}
 
@@ -190,14 +188,23 @@ a{color:inherit}
 
 <header class="shoulder">
   <h1 class="badge">
-    <svg viewBox="0 0 814 305" role="img" aria-label="PDXfixIT">
-      <rect width="814" height="305" rx="24" fill="#935403"/>
-      <!-- the cable, carried on from the artwork's edge to the plate's, as on the shipped badge -->
+    <svg viewBox="44 59 720 246" role="img" aria-label="PDXfixIT">
+      <defs>
+        <image id="art" x="44" y="59" width="720" height="201" href="__LOGO_ART__"/>
+        <!-- the ring keeps its own colours; the wordmark is split off so dark mode can turn it white -->
+        <clipPath id="ring-part"><rect x="44" y="59" width="234" height="246"/></clipPath>
+        <clipPath id="word-part"><rect x="278" y="59" width="486" height="201"/></clipPath>
+        <filter id="to-white" color-interpolation-filters="sRGB">
+          <feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0"/>
+        </filter>
+      </defs>
+      <!-- the cable, carried on below the ring as on the shipped logo -->
       <rect x="132" y="250" width="26" height="26" fill="#9C9C9C"/>
       <rect x="133" y="250" width="24" height="23" fill="#FFF"/>
       <rect x="137.5" y="274" width="14" height="31" fill="#8F8F8F"/>
       <rect x="139" y="274" width="11" height="31" fill="#FFF"/>
-      <image x="44" y="59" width="720" height="201" href="__LOGO_ART__"/>
+      <use href="#art" clip-path="url(#ring-part)"/>
+      <use class="wordmark" href="#art" clip-path="url(#word-part)"/>
     </svg>
   </h1>
 </header>
@@ -220,7 +227,6 @@ a{color:inherit}
 <footer class="hem">
   <div class="here">
     <span>Portland, Oregon</span>
-    <time id="clock" datetime="">--:--</time>
   </div>
   <nav class="links" aria-label="Elsewhere">
     <a href="https://github.com/PDXfixIT">GitHub</a>
@@ -239,17 +245,6 @@ const BREAKS = { entrepreneurs: "entre|preneurs", freelancers: "free|lancers" };
 
 {
   "use strict";
-
-  /* live Portland clock */
-  const clock = document.getElementById("clock");
-  const fmt = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" });
-  const tick = () => {
-    const now = new Date();
-    clock.textContent = fmt.format(now).toLowerCase();
-    clock.setAttribute("datetime", now.toISOString());
-  };
-  tick();
-  setInterval(tick, 15000);
 
   /* the CTA warms as a mouse or pen closes in (touch gets a fixed warmth in CSS) */
   const cta = document.getElementById("cta");
@@ -311,7 +306,7 @@ const BREAKS = { entrepreneurs: "entre|preneurs", freelancers: "free|lancers" };
      next comes up from below. Both ride the same axis on the same clock, so they stay joined at
      the edge. Each face is seen square on, from DEPTH face-heights away, so the drum foreshortens
      without the type appearing to lean or swell. It runs a hair past and settles back, like a detent catching. */
-  const PERIOD = 3200, TURN = 820, CATCH = .84, PAST = 2.5, SHADE = .15, DEPTH = 16;
+  const PERIOD = 2900, TURN = 820, CATCH = .84, PAST = 2.5, SHADE = .15, DEPTH = 16;
   const STEP = parseFloat(getComputedStyle(slot).getPropertyValue("--step")) || 60;
   const EASE = getComputedStyle(document.documentElement).getPropertyValue("--ease").trim() || "ease-in-out";
   const roll = (face, lens, [a, b, c]) => {

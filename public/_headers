@@ -6,4 +6,4 @@
   Cache-Control: no-cache
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-  Content-Security-Policy: default-src 'none'; style-src 'sha256-Gje2WjsfTu/36T5iZuuoop9LzGgjPmxTU+fmpoGYuXI='; script-src 'sha256-lHrL0iZJS7KQ62VGlDrW8hQVhYJAz45ZcyYqEgbc9vA='; font-src data:; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; style-src 'sha256-vLvfiVJGPy2KeTKdHumH5xlMMipjrAmijvheWvBGh4g='; script-src 'sha256-tCYDrbhGjSSNU1WXschM/Zbw+DLlgnvPRTekHQxlaQ8='; font-src data:; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'

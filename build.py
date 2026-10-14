@@ -6,8 +6,9 @@ subset holding only the characters the page uses are all inlined. The CSP in
 _headers allows exactly the page's one <style> and one <script> by SHA-256
 hash, so both files are written in the same run and cannot drift apart.
 
-    python3 build.py           # build, then lint the result
-    python3 build.py --check   # lint the current public/ without rebuilding
+    python3 build.py               # build into public/, then lint the result
+    python3 build.py --out DIR     # build a preview into DIR; public/ is untouched
+    python3 build.py --check       # lint the current public/ without rebuilding
 
 Stdlib only. Fetches the font subset from Google Fonts at build time and fails
 loudly if it can't, rather than shipping a page without its font.
@@ -48,7 +49,7 @@ def fetch(url):
 
 
 def charset(page):
-    """Every character the page can put on screen: visible text plus the rotating phrases and the clock."""
+    """Every character the page can put on screen: visible text plus the rotating phrases."""
     body = re.sub(r"<(script|style)\b.*?</\1>", " ", page, flags=re.S | re.I)
     body = re.sub(r"<svg\b.*?</svg>", " ", body, flags=re.S | re.I)
     text = html.unescape(re.sub(r"<[^>]+>", " ", body))
@@ -56,8 +57,7 @@ def charset(page):
     if not kinds:
         fail("const KINDS not found in src/index.html")
     phrases = "".join(re.findall(r'"([^"]*)"', kinds.group(1)))
-    clock = "0123456789: AaMmPp"   # Intl en-US "h:mm AM", lowercased by the page
-    return "".join(sorted(set(text + phrases + clock + "-") - set("\n\t\r")))
+    return "".join(sorted(set(text + phrases + "-") - set("\n\t\r")))
 
 
 def woff2_tables(b):
@@ -155,7 +155,7 @@ def lint(page, headers):
     return errs
 
 
-def build():
+def build(out=PUBLIC):
     src = (SRC / "index.html").read_text()
     chars = charset(src)
     face, font_bytes = font_face(chars)
@@ -168,11 +168,12 @@ def build():
     errs = lint(page, headers)
     if errs:
         fail("lint failed:\n  - " + "\n  - ".join(errs))
-    (PUBLIC / "index.html").write_text(page)
-    (PUBLIC / "_headers").write_text(headers)
-    (PUBLIC / ".assetsignore").write_text(".DS_Store\n.assetsignore\n")
-    print(f"✅ public/index.html {len(page.encode()):,} bytes (font subset {font_bytes:,} bytes, {len(chars)} characters)")
-    print("✅ public/_headers CSP hashes match the page")
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "index.html").write_text(page)
+    (out / "_headers").write_text(headers)
+    (out / ".assetsignore").write_text(".DS_Store\n.assetsignore\n")
+    print(f"✅ {out}/index.html {len(page.encode()):,} bytes (font subset {font_bytes:,} bytes, {len(chars)} characters)")
+    print(f"✅ {out}/_headers CSP hashes match the page")
 
 
 def check():
@@ -186,4 +187,15 @@ def check():
 
 
 if __name__ == "__main__":
-    sys.exit(check() if "--check" in sys.argv[1:] else build())
+    args = sys.argv[1:]
+    if "--check" in args:
+        sys.exit(check())
+    if "--out" in args:
+        i = args.index("--out")
+        if i + 1 >= len(args):
+            fail("--out needs a directory")
+        out = Path(args[i + 1]).resolve()
+        if out == PUBLIC.resolve():
+            fail("--out is for previews; run without it to build public/")
+        sys.exit(build(out))
+    sys.exit(build())
