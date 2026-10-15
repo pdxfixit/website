@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           repository: pdxfixit/flarepress
-          ref: v1
+          ref: 25285d502a77e85810626ae621520a6f23f258c6  # flarepress main, 2026-10-15; move the pin to take a newer one
           path: .flarepress
       - name: public/ is a clean, linted build
         run: |
