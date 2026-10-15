@@ -1,0 +1,14 @@
+# pdxfixit.com: static assets only (public/, written by build.py), on the
+# apex and www. Deployed by .github/workflows/deploy.yml on every push to
+# master that changes public/ or site/, through flarepress
+# (github.com/pdxfixit/flarepress), with this repo's own Cloudflare token.
+name = "pdxfixit-com"
+compatibility_date = "2026-08-18"
+
+routes = [
+  { pattern = "pdxfixit.com", custom_domain = true },
+  { pattern = "www.pdxfixit.com", custom_domain = true }
+]
+
+[assets]
+directory = "../public"
