@@ -13,7 +13,7 @@ hash, so both files are written in the same run and cannot drift apart.
 Stdlib only. Fetches the font subset from Google Fonts at build time and fails
 loudly if it can't, rather than shipping a page without its font.
 """
-import base64, hashlib, html, re, struct, sys, urllib.parse, urllib.request
+import base64, hashlib, html, re, struct, subprocess, sys, urllib.parse, urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -23,6 +23,7 @@ FONT_AXES = "opsz,wght@6..72,300..600"
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36"
 # Links a visitor may follow. Anything else with a URL is a second request and breaks the single GET.
 OUTBOUND = ("https://github.com/", "https://www.linkedin.com/", "mailto:")
+REPO = "https://github.com/pdxfixit/website"   # the build stamp in the hem links to its commit here
 
 HEADERS = """\
 # Response headers for Cloudflare Workers Static Assets (this file is not served).
@@ -131,6 +132,22 @@ def font_face(chars):
     return re.sub(r"\s+", " ", face), len(font)
 
 
+def git(*args):
+    try:
+        return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError) as e:
+        fail(f"git {' '.join(args)} failed: {getattr(e, 'stderr', '') or e}")
+
+
+def build_stamp():
+    """HEAD at build time, for the hem. When the source and its build are committed together,
+    this is the commit before the one that ships the page."""
+    sha = git("rev-parse", "--short=7", "HEAD")
+    if not re.fullmatch(r"[0-9a-f]{7,}", sha):
+        fail(f"git gave {sha!r} for HEAD, not a commit hash")
+    return {"__BUILD_SHA__": sha, "__BUILD_URL__": f"{REPO}/commit/{sha}", "__BUILD_NOTE__": f"Built from {sha}"}
+
+
 def data_uri(path, mime):
     return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode()}"
 
@@ -176,6 +193,8 @@ def lint(page, headers):
 
 def build(out=PUBLIC):
     src = (SRC / "index.html").read_text()
+    for placeholder, value in build_stamp().items():
+        src = src.replace(placeholder, value)
     errs = phrase_errors(src)
     if errs:
         fail("phrase list:\n  - " + "\n  - ".join(errs))

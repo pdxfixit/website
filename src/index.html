@@ -173,6 +173,9 @@ a{color:inherit}
 .fx-marquee.held .grip{display:inline}
 /* ledger: a sum line, then the double rule under a total */
 .fx-ledger{background:var(--ink);transform-origin:0 50%}
+/* pen: a fountain-pen nib, pivoting on its tip */
+.fx-nib{overflow:visible;transform-origin:50% 100%;fill:var(--ink)}
+.fx-nib .slit{fill:var(--ground);stroke:var(--ground);stroke-width:1.6}
 /* Portland: a light drizzle */
 .fx-drop{background:linear-gradient(transparent,var(--muted));opacity:.75;transform-origin:50% 0}
 
@@ -217,6 +220,9 @@ a{color:inherit}
 .here,.links{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 20px}
 .links a{text-decoration:none;color:var(--ink);background:linear-gradient(currentColor,currentColor) 0 100%/100% 1px no-repeat;padding-bottom:1px}
 .links a:hover{background-size:100% 2px}
+/* the build stamp: the commit this page came from, set small in the system's monospace like a part number */
+.sha{font:400 .78em/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.02em;color:inherit;text-decoration:none;opacity:.75}
+.sha:hover{opacity:1;text-decoration:underline}
 
 /* still pages say it all at once */
 @media (prefers-reduced-motion:reduce){
@@ -295,6 +301,7 @@ a{color:inherit}
 <footer class="hem">
   <div class="here">
     <span>Portland, Oregon</span>
+    <a class="sha" href="__BUILD_URL__" title="__BUILD_NOTE__">__BUILD_SHA__</a>
   </div>
   <nav class="links" aria-label="Elsewhere">
     <a href="https://github.com/PDXfixIT">GitHub</a>
@@ -570,6 +577,49 @@ const BREAKS = {
       /* solid while keys are going, blinking whenever they stop */
       caret.style.visibility = Math.floor((now - struck) / BLINK) % 2 ? "hidden" : "visible";
     });
+  };
+
+  /* a pen: the old phrase fades off the page, and a fountain-pen nib writes the new one in at an even hand,
+     rising and falling through each letter as it forms it, then lifts away. Only the nib is drawn: a whole
+     pen would reach up over the line above. */
+  const ASCENDS = /[A-Zbdfhklt]/;
+  const write = async (from, to) => {
+    const b = geometry(to), em = b.em, w = .19 * em, h = .38 * em;
+    const nib = vector("svg", { class: "fx-nib", viewBox: "0 0 20 40", "aria-hidden": "true" }, layer);
+    vector("path", { d: "M2 0H18C18 10 16 18 10 40C4 18 2 10 2 0Z" }, nib);
+    vector("path", { class: "slit", d: "M10 15V37" }, nib);
+    vector("circle", { class: "slit", cx: 10, cy: 13, r: 2.2 }, nib);
+    Object.assign(nib.style, { width: pixels(w), height: pixels(h) });
+    const at = (x, y) => { nib.style.transform = `translate(${pixels(x - w / 2)}, ${pixels(y - h)}) rotate(32deg)`; };
+    at(b.rows[0].x0, b.rows[0].base - .03 * em);
+    await Promise.all([
+      play(from, { opacity: [1, 0] }, 200, { easing: "ease-in" }),
+      play(nib, { opacity: [0, 1] }, 200, { easing: "ease-out" }),
+    ]);
+    hide(from);
+    clip(b, []);
+    show(to);
+    const length = b.rows.reduce((sum, row) => sum + row.x1 - row.x0, 0);
+    await frames(Math.min(950, Math.max(600, b.keys.length * 42)), (p) => {
+      let x = length * p, tip = null;
+      clip(b, b.rows.map((row) => {
+        const span = row.x1 - row.x0;
+        if (!tip && x <= span) tip = { row, x: row.x0 + Math.max(0, x) };
+        const s = x <= 0 ? null : x >= span ? true : [-em, row.x0 + x];
+        x -= span;
+        return s;
+      }));
+      tip ||= { row: b.rows.at(-1), x: b.rows.at(-1).x1 };
+      /* up and back down within each character, higher for ascenders, a low hop across a space */
+      const k = b.keys.find((key) => key.row === tip.row && key.left <= tip.x && tip.x < key.x);
+      let lift = .03;
+      if (k) {
+        const top = k.ch === " " ? .22 : ASCENDS.test(k.ch) ? .44 : .34;
+        lift += (top - .03) * (.5 - .5 * Math.cos(2 * Math.PI * (tip.x - k.left) / (k.x - k.left)));
+      }
+      at(tip.x, tip.row.base - lift * em);
+    });
+    await play(nib, { opacity: [1, 0], translate: ["0 0", `${pixels(.1 * em)} ${pixels(-.16 * em)}`] }, 220, { easing: "ease-in" });
   };
 
   /* --- the themed effects: a moment from the trade's own world, whenever its phrase arrives --- */
@@ -849,7 +899,7 @@ const BREAKS = {
     "medical practices": ecg, breweries: pour, musicians: beat, "design studios": marquee,
     "accounting firms": ledger, "fellow Portlanders": drizzle,
   };
-  const GENERAL = [wheel, fade, type];
+  const GENERAL = [wheel, fade, type, write];
 
   /* put both faces back to plain type, whatever the effect did: the new one on show, the old one hidden */
   const settle = (from, to) => {
