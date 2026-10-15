@@ -19,6 +19,9 @@
   --wordmark-filter:none;    /* the logo's black wordmark, as drawn */
   /* the phrase shades: rust to burnt amber, all at least 3:1 on the light ground */
   --shade-l0:.44;--shade-l1:.57;--shade-c0:.14;--shade-c1:.15;--shade-h0:44;--shade-h1:64;
+  /* the spectrum phrases: rust through orange to ochre across the letters, every stop at least 3:1 */
+  --spectrum:oklch(.47 .15 34),oklch(.51 .135 46),oklch(.555 .125 60),oklch(.575 .118 74);
+  --spectrum-mid:oklch(.51 .135 46);
   --glow-a:.55;
   --fx-flash:#FFFCF5;        /* a photographer's flash, brighter than the ground */
   --fx-foam:#FFF8EC;         /* the head on a poured beer */
@@ -35,6 +38,8 @@
     --muted:#BBA08A;
     --wordmark-filter:url(#to-white);   /* black lettering would vanish on espresso */
     --shade-l0:.66;--shade-l1:.86;--shade-c0:.17;--shade-c1:.10;--shade-h0:46;--shade-h1:72;   /* deep orange to peach */
+    --spectrum:oklch(.68 .17 38),oklch(.75 .16 52),oklch(.82 .13 66),oklch(.88 .10 82);   /* ember to wheat */
+    --spectrum-mid:oklch(.75 .16 52);
     --glow-a:.75;
     --fx-flash:#FFF3E1;
     --fx-foam:#F2E7DB;
@@ -118,6 +123,14 @@ a{color:inherit}
     calc(var(--shade-l0) + (var(--shade-l1) - var(--shade-l0)) * var(--i, .5))
     calc(var(--shade-c0) + (var(--shade-c1) - var(--shade-c0)) * var(--i, .5))
     calc(var(--shade-h0) + (var(--shade-h1) - var(--shade-h0)) * var(--i, .5)));
+}
+/* a spectrum phrase runs the theme's oranges across its letters instead of wearing one shade. Its
+   color stays a single shade, the gradient's middle, for the effects that draw in currentColor. */
+.ph.spectrum{
+  color:var(--spectrum-mid);
+  background:linear-gradient(90deg,var(--spectrum));
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;
 }
 .ph.off,.slot .rm{visibility:hidden}
 .slot .rm{display:none}
@@ -326,6 +339,9 @@ const KINDS = [
   ...(PORTLAND ? ["fellow Portlanders"] : []),
 ];
 
+/* Phrases whose letters run through the oranges as a gradient, rather than wearing one shade. */
+const SPECTRUM = ["design studios", "creative studios"];
+
 /* On phones every phrase takes two short lines. Phrases break at their most balanced space, or failing that their
    hyphen; a single word needs its break point written here, with "|" where the hyphen goes. A word too short to
    break (say "clubs") would leave a blank line on phones, so give it a second word instead. */
@@ -385,6 +401,7 @@ const BREAKS = {
     const [a, b, broken] = split(text);
     const face = document.createElement("span");
     face.className = i === 0 ? "ph" : "ph off";
+    if (SPECTRUM.includes(text)) face.classList.add("spectrum");
     const first = segment(a);
     if (broken) {
       const hy = document.createElement("span");
