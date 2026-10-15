@@ -1,5 +1,5 @@
-# Deploys https://pdxfixit.com (and www) on every push to master that changes
-# the built page or the site config, with this repo's own Cloudflare token
+# Deploys https://pdxfixit.com (and www) on every push to master (Ben,
+# 2026-10-15: autodeploy like noodlepads), with this repo's own Cloudflare token
 # (Workers Scripts: Edit; pdxfixit.com: Workers Routes: Edit, DNS: Edit, Zone:
 # Read). No agent holds a token. Steps: build.py --check (public/ is a clean,
 # linted build), wrangler deploy through flarepress, then site/verify.sh (both
@@ -10,7 +10,6 @@ name: deploy
 on:
   push:
     branches: [master]
-    paths: ['public/**', 'site/**']
   workflow_dispatch:
 permissions:
   contents: read
