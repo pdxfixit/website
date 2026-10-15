@@ -9,6 +9,7 @@ hash, so both files are written in the same run and cannot drift apart.
     python3 build.py               # build into public/, then lint the result
     python3 build.py --out DIR     # build a preview into DIR; public/ is untouched
     python3 build.py --check       # lint the current public/ without rebuilding
+    python3 build.py --stamp SHA   # set the hem's build stamp in public/ to SHA (the deploy runs this)
 
 Stdlib only. Fetches the font subset from Google Fonts at build time and fails
 loudly if it can't, rather than shipping a page without its font.
@@ -139,13 +140,34 @@ def git(*args):
         fail(f"git {' '.join(args)} failed: {getattr(e, 'stderr', '') or e}")
 
 
-def build_stamp():
-    """HEAD at build time, for the hem. When the source and its build are committed together,
-    this is the commit before the one that ships the page."""
-    sha = git("rev-parse", "--short=7", "HEAD")
-    if not re.fullmatch(r"[0-9a-f]{7,}", sha):
-        fail(f"git gave {sha!r} for HEAD, not a commit hash")
-    return {"__BUILD_SHA__": sha, "__BUILD_URL__": f"{REPO}/commit/{sha}", "__BUILD_NOTE__": f"Built from {sha}"}
+def build_stamp(sha=None):
+    """The hem's build stamp. A build names HEAD, which is the commit before the one that ships the
+    page, since a commit can't hold its own hash; the deploy then restamps public/ with the pushed
+    commit (--stamp), so the live page names exactly the commit it was deployed from."""
+    sha = sha or git("rev-parse", "HEAD")
+    if not re.fullmatch(r"[0-9a-f]{7,40}", sha):
+        fail(f"{sha!r} is not a commit hash")
+    short = sha[:7]
+    return {"__BUILD_SHA__": short, "__BUILD_URL__": f"{REPO}/commit/{short}", "__BUILD_NOTE__": f"Built from {short}"}
+
+
+STAMP = r'<a class="sha" href="[^"]*" title="[^"]*">[^<]*</a>'
+
+
+def stamp(sha):
+    """Rewrite only the stamp in the built public/index.html; the CSP covers <style> and <script>,
+    not the text, so _headers stays as it is."""
+    page = (PUBLIC / "index.html").read_text()
+    if len(re.findall(STAMP, page)) != 1:
+        fail("expected exactly one build stamp (<a class=\"sha\" ...>) in public/index.html")
+    v = build_stamp(sha)
+    page = re.sub(STAMP, lambda _: f'<a class="sha" href="{v["__BUILD_URL__"]}" title="{v["__BUILD_NOTE__"]}">{v["__BUILD_SHA__"]}</a>', page)
+    headers = (PUBLIC / "_headers").read_text()
+    errs = lint(page, headers)
+    if errs:
+        fail("lint failed after stamping:\n  - " + "\n  - ".join(errs))
+    (PUBLIC / "index.html").write_text(page)
+    print(f"✅ public/index.html stamped {v['__BUILD_SHA__']}")
 
 
 def data_uri(path, mime):
@@ -231,6 +253,11 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     if "--check" in args:
         sys.exit(check())
+    if "--stamp" in args:
+        i = args.index("--stamp")
+        if i + 1 >= len(args):
+            fail("--stamp needs a commit hash")
+        sys.exit(stamp(args[i + 1]))
     if "--out" in args:
         i = args.index("--out")
         if i + 1 >= len(args):
