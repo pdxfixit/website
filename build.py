@@ -23,7 +23,7 @@ FONT_FAMILY = "Newsreader"
 FONT_AXES = "opsz,wght@6..72,300..600"
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36"
 # Links a visitor may follow. Anything else with a URL is a second request and breaks the single GET.
-OUTBOUND = ("https://github.com/", "https://www.linkedin.com/", "mailto:")
+OUTBOUND = ("https://github.com/", "https://www.linkedin.com/", "https://privacy.pdxfixit.com/", "mailto:")
 REPO = "https://github.com/pdxfixit/website"   # the build stamp in the hem links to its commit here
 
 HEADERS = """\
