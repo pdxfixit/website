@@ -23,7 +23,12 @@ FONT_FAMILY = "Newsreader"
 FONT_AXES = "opsz,wght@6..72,300..600"
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36"
 # Links a visitor may follow. Anything else with a URL is a second request and breaks the single GET.
-OUTBOUND = ("https://github.com/", "https://www.linkedin.com/", "https://privacy.pdxfixit.com/", "mailto:")
+OUTBOUND = ("https://github.com/", "https://www.linkedin.com/", "https://privacy.pdxfixit.com/")
+# The contact address is never written out in plain text in this repo or in the page: a harvester that reads the HTML
+# or the source finds none. It is held reversed and base64-encoded; the page carries that in data-c (the
+# __CONTACT__ placeholder) and its script builds the mailto link. lint refuses a plain address or a mailto: link.
+CONTACT_ENC = "bW9jLnRpeGlmeGRwQG9mbmk="
+EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.[A-Za-z]{2,}")
 REPO = "https://github.com/pdxfixit/website"   # the build stamp in the hem links to its commit here
 
 HEADERS = """\
@@ -59,7 +64,8 @@ def charset(page):
     if not kinds:
         fail("const KINDS not found in src/index.html")
     phrases = "".join(re.findall(r'"([^"]*)"', kinds.group(1)))
-    return "".join(sorted(set(text + phrases + "-") - set("\n\t\r")))
+    # "@." too: the script writes the address into the page, and those glyphs must be in the font subset
+    return "".join(sorted(set(text + phrases + "-@.") - set("\n\t\r")))
 
 
 def woff2_tables(b):
@@ -206,6 +212,8 @@ def lint(page, headers):
         if attr == "href" and url.startswith(OUTBOUND):
             continue
         errs.append(f'{attr}="{url[:60]}" would be a second request')
+    if EMAIL.search(page) or re.search(r'href="mailto:', page):
+        errs.append("a plain email address or a mailto: href in the page: the script builds the contact from data-c")
     if re.search(r"__[A-Z_]+__", page):
         errs.append("an unfilled __PLACEHOLDER__ is left in the page")
     if headers is not None and csp_for(page) not in headers:
@@ -222,7 +230,8 @@ def build(out=PUBLIC):
         fail("phrase list:\n  - " + "\n  - ".join(errs))
     chars = charset(src)
     face, font_bytes = font_face(chars)
-    page = (src.replace("__LOGO_ART__", data_uri(SRC / "logo-art.webp", "image/webp"))
+    page = (src.replace("__CONTACT__", CONTACT_ENC)
+               .replace("__LOGO_ART__", data_uri(SRC / "logo-art.webp", "image/webp"))
                .replace("__FAVICON__", data_uri(SRC / "favicon.ico", "image/x-icon"))
                .replace("<style>\n", f"<style>\n{face}\n", 1))
     page = page.replace("<!doctype html>\n",

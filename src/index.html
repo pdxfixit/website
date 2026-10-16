@@ -233,6 +233,7 @@ a{color:inherit}
 .here,.links{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 20px}
 .links a{text-decoration:none;color:var(--ink);background:linear-gradient(currentColor,currentColor) 0 100%/100% 1px no-repeat;padding-bottom:1px}
 .links a:hover{background-size:100% 2px}
+.links .contact{color:var(--ink)}   /* the spoken address, until the script makes it a link */
 /* the build stamp, read as commit@place: the commit this page came from, set small in the system's monospace like a part number */
 .here{gap:6px .35em}
 .sha,.at{font:400 .78em/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.02em;color:inherit;opacity:.75}
@@ -310,7 +311,7 @@ a{color:inherit}
     </span>
   </p>
 
-  <a class="cta" id="cta" href="mailto:info@pdxfixit.com">Say hello</a>
+  <a class="cta" id="cta" href="#hello" data-c="__CONTACT__">Say hello</a>
 </main>
 
 <footer class="hem">
@@ -323,11 +324,22 @@ a{color:inherit}
     <a href="https://github.com/PDXfixIT">GitHub</a>
     <a href="https://www.linkedin.com/in/sandbergpdx">LinkedIn</a>
     <a href="https://privacy.pdxfixit.com/">Privacy</a>
-    <a href="mailto:info@pdxfixit.com">info@pdxfixit.com</a>
+    <span class="contact" id="hello" data-c="__CONTACT__">info at pdxfixit dot com</span>
   </nav>
 </footer>
 
 <script>
+/* The contact address is never in this page as text, so a spam harvester reading the HTML finds none. Each
+   data-c is the address reversed and base64-encoded (build.py fills it in); here it becomes a mailto link. With
+   scripts off the button jumps to the footer, which reads "info at pdxfixit dot com". */
+{
+  for (const e of document.querySelectorAll("[data-c]")) {
+    const a = atob(e.dataset.c).split("").reverse().join("");
+    if (e.tagName === "A") e.href = "mailto:" + a;
+    else { const l = document.createElement("a"); l.href = "mailto:" + a; l.textContent = a; e.replaceChildren(l); }
+  }
+}
+
 /* true adds "fellow Portlanders" to the phrases, arriving in its own light drizzle */
 const PORTLAND = true;
 
