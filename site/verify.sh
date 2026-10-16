@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# After a deploy: both hostnames serve public/index.html byte for byte, and the
+# After a deploy: both hostnames serve public/index.html (and the apex serves security.txt) byte for byte, and the
 # CSP header is the one public/_headers sets (build.py writes both; their hashes
 # must match). Read-only GETs. Exit 1 names what failed.
 #
@@ -16,11 +16,12 @@ want_csp=$(sed -n 's/^[[:space:]]*Content-Security-Policy:[[:space:]]*//p' publi
 page=$(mktemp)
 trap 'rm -f "$page"' EXIT
 bad=0
-for host in pdxfixit.com www.pdxfixit.com; do
+for spec in "pdxfixit.com / public/index.html" "www.pdxfixit.com / public/index.html" "pdxfixit.com /.well-known/security.txt public/.well-known/security.txt"; do
+  read -r host path file <<<"$spec"
   run=0 hits=0 tries=0 start=$SECONDS
   while [ "$run" -lt "$need" ] && [ $((SECONDS - start)) -lt "$budget" ]; do
     tries=$((tries + 1))
-    if curl -fsS -m 20 -o "$page" "https://$host/?$RANDOM$RANDOM" && cmp -s "$page" public/index.html; then
+    if curl -fsS -m 20 -o "$page" "https://$host$path?$RANDOM$RANDOM" && cmp -s "$page" "$file"; then
       run=$((run + 1)) hits=$((hits + 1))
     else
       run=0
@@ -29,12 +30,12 @@ for host in pdxfixit.com www.pdxfixit.com; do
   done
   took=$((SECONDS - start))
   if [ "$run" -ge "$need" ]; then
-    echo "✅ $host serves public/index.html ($need fetches in a row, after ${took}s)"
+    echo "✅ $host$path serves $file ($need fetches in a row, after ${took}s)"
   else
-    echo "❌ $host did not settle on public/index.html: $hits of $tries fetches matched in ${took}s, never $need in a row"
+    echo "❌ $host$path did not settle on $file: $hits of $tries fetches matched in ${took}s, never $need in a row"
     bad=1
   fi
-  got_csp=$(curl -fsS -m 20 -D - -o /dev/null "https://$host/?$RANDOM$RANDOM" | tr -d '\r' | sed -n 's/^[Cc]ontent-[Ss]ecurity-[Pp]olicy:[[:space:]]*//p' | head -1)
-  [ "$got_csp" = "$want_csp" ] && echo "✅ $host CSP matches _headers" || { echo "❌ $host CSP differs from _headers"; bad=1; }
+  got_csp=$(curl -fsS -m 20 -D - -o /dev/null "https://$host$path?$RANDOM$RANDOM" | tr -d '\r' | sed -n 's/^[Cc]ontent-[Ss]ecurity-[Pp]olicy:[[:space:]]*//p' | head -1)
+  [ "$got_csp" = "$want_csp" ] && echo "✅ $host$path CSP matches _headers" || { echo "❌ $host$path CSP differs from _headers"; bad=1; }
 done
 exit $bad
